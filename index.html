@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:,">
+<title>動画編集アプリ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#000000; --panel:#111111; --panel2:#1b1b1b; --panel3:#262626;
+  --ink:#ffffff; --muted:#9c9c9c; --muted2:#6f6f6f; --line:#2b2b2b;
+  --accent:#ffffff; --accent-ink:#000000; --teal:#3ec9a7; --teal-dim:#1d3a33;
+  --danger:#ff5c5c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{min-height:40px;cursor:pointer}
+a{color:inherit}
+
+/* ===== Top bar (CapCut style: slim, black, Export top-right) ===== */
+.topbar{position:sticky;top:0;z-index:30;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;background:#000;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14px;min-width:0}
+.brand-mark{width:30px;height:30px;border-radius:7px;background:#fff;color:#000;display:grid;place-items:center;font-size:15px;flex:0 0 auto}
+.brand .proj{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand small{display:block;font-weight:500;color:var(--muted);font-size:10.5px}
+.top-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end}
+.btn{border:1px solid transparent;background:var(--panel3);color:var(--ink);border-radius:7px;padding:8px 13px;font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;min-height:38px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:900}
+.btn.dark{background:var(--panel3);color:var(--ink)}
+.btn.ghostdark{background:transparent;color:#fff;border-color:#3a3a3a}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.big{font-size:15px;padding:12px 20px;min-height:48px}
+.icon-only{width:38px;padding:0;justify-content:center;font-size:16px}
+
+/* ===== Layout: single column editor stack ===== */
+.layout{max-width:1020px;margin:0 auto;padding:0 0 10px;display:flex;flex-direction:column;gap:0}
+.stage-card{background:#000}
+
+/* ===== Import / drop state ===== */
+.dropzone{padding:52px 18px 44px;text-align:center;color:#fff;background:#000}
+.dropzone.drag{outline:2px dashed #fff;outline-offset:-10px}
+.import-card{width:min(430px,100%);margin:0 auto;border:1.5px dashed #3d3d3d;border-radius:10px;padding:34px 20px 26px;background:#0d0d0d}
+.import-plus{width:54px;height:54px;margin:0 auto 14px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;font-size:30px;font-weight:400;line-height:1}
+.dropzone h1{font-size:19px;font-weight:800;line-height:1.4;margin:0 auto 8px}
+.dropzone p{color:var(--muted);max-width:480px;margin:0 auto 18px;line-height:1.7;font-size:13px}
+.drop-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.quick{display:flex;gap:0;justify-content:center;flex-wrap:wrap;margin:26px auto 0;max-width:560px}
+.quick span{flex:1 1 100px;text-align:center;color:var(--muted);font-size:11px;font-weight:500;padding:4px 2px}
+.quick b{display:block;font-size:19px;color:#fff;margin-bottom:4px;font-weight:400}
+
+/* ===== Preview ===== */
+.editor{padding:0;background:#000}
+.canvas-shell{background:#000;display:grid;place-items:center;min-height:300px;padding:10px 8px 2px}
+canvas#preview{width:auto;max-width:100%;height:auto;max-height:56vh;display:block;background:#000}
+.transport{padding:6px 14px 10px;color:#fff;border-bottom:1px solid var(--line)}
+.timecode{text-align:center;font-variant-numeric:tabular-nums;font-size:13px;color:#d8d8d8;margin-bottom:2px}
+.timecode b{color:#fff;font-weight:700}
+.transport-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.playbtn{width:42px;height:42px;border-radius:50%;border:none;background:#fff;color:#000;font-size:16px;display:grid;place-items:center;flex:0 0 auto}
+.seek{flex:1;min-width:120px;height:32px}
+input[type=range]{accent-color:#fff}
+.iconbtn{background:transparent;color:#e8e8e8;border:none;border-radius:7px;padding:7px 10px;font-weight:700;font-size:12.5px;min-height:36px}
+.iconbtn:active{background:var(--panel3)}
+
+/* ===== Timeline (CapCut style) ===== */
+.timeline{background:#0a0a0a;padding:10px 12px 14px;color:#ececec}
+.tl-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.tl-head h3{margin:0;font-size:12px;font-weight:700;color:#cfcfcf}
+.tl-head .tl-tools{display:flex;gap:2px}
+.tl-head .tl-tools span{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;background:var(--panel2);font-size:13px}
+.ruler{position:relative;height:16px;margin:0 0 6px 34px;background:repeating-linear-gradient(to right,#3a3a3a 0 1px,transparent 1px 36px);border-bottom:1px solid #222}
+.ruler i{position:absolute;top:0;font-style:normal;font-size:9.5px;color:var(--muted2);font-variant-numeric:tabular-nums}
+.track-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.track-ico{width:26px;flex:0 0 26px;text-align:center;font-size:13px;color:var(--muted)}
+.clipbar{position:relative;flex:1;height:54px;border-radius:5px;border:2px solid #fff;overflow:hidden;background:
+  repeating-linear-gradient(to right, rgba(255,255,255,.16) 0 1px, transparent 1px 54px),
+  linear-gradient(100deg,#5b4a68 0%,#7a5b52 30%,#4a6b74 58%,#6d5a7d 82%,#54455f 100%)}
+.clipbar .clipname{position:absolute;left:16px;bottom:4px;right:16px;font-size:10.5px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.handle{position:absolute;top:0;bottom:0;width:13px;background:#fff;color:#000;display:grid;place-items:center;font-size:10px;font-weight:900;z-index:3}
+.handle.l{left:0;border-radius:3px 0 0 3px}
+.handle.r{right:0;border-radius:0 3px 3px 0}
+.playhead{position:absolute;top:-2px;bottom:-2px;left:0;width:2px;background:#fff;z-index:4;box-shadow:0 0 0 .5px rgba(0,0,0,.4)}
+.playhead::before{content:"";position:absolute;top:-1px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top:6px solid #fff}
+.audiobar{flex:1;height:26px;border-radius:5px;background:var(--teal-dim);display:flex;align-items:center;gap:8px;padding:0 10px;overflow:hidden}
+.audiobar .wave{flex:1;height:14px;background:repeating-linear-gradient(to right,var(--teal) 0 2px,transparent 2px 5px);opacity:.75;border-radius:2px}
+.audiobar span{font-size:10.5px;color:#bfe8db;white-space:nowrap;font-weight:700}
+.trimgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin-top:10px}
+.trimgrid label{font-size:11px;font-weight:700;color:var(--muted);display:flex;justify-content:space-between}
+.trimgrid label span{color:#fff;font-variant-numeric:tabular-nums}
+.trimgrid input{width:100%;height:30px}
+.trimvals{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:11.5px;color:var(--muted)}
+.chip{background:var(--panel2);border-radius:5px;padding:4px 8px;color:#d5d5d5}
+.chip strong{color:#fff}
+
+/* ===== Tool panel + bottom dock ===== */
+.panel{background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column}
+.panes-wrap{order:1}
+.tabs{order:2;display:grid;grid-template-columns:repeat(6,1fr);background:#000;border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.tab,.dockbtn{border:none;background:transparent;border-radius:8px;font-weight:500;font-size:10.5px;padding:6px 2px 4px;color:var(--muted);min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.tab .tico,.dockbtn .tico{font-size:20px;line-height:1;color:#e8e8e8;font-weight:400}
+.tab.active{color:#fff}
+.tab.active .tico{color:#fff}
+.tab.active{background:var(--panel3)}
+.pane{display:none;padding:16px 16px 20px;max-width:760px;width:100%;margin:0 auto}
+.pane.active{display:block}
+.pane h2{font-size:14px;margin:0 0 4px;font-weight:800}
+.pane .lead{color:var(--muted);font-size:12px;line-height:1.6;margin:0 0 14px}
+.field{margin-bottom:15px}
+.field label{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:7px;color:#e6e6e6}
+.field label output{color:var(--muted);font-variant-numeric:tabular-nums;font-weight:500}
+.field input[type=range]{width:100%;height:30px}
+.field input[type=text],.field textarea,.field select{width:100%;border:1px solid var(--line);background:var(--panel3);color:var(--ink);border-radius:7px;padding:10px 12px;min-height:42px}
+.field textarea{resize:vertical}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.seg button{border:1px solid var(--line);background:var(--panel3);color:#e6e6e6;border-radius:7px;font-weight:700;font-size:13px;padding:8px 4px;min-height:46px}
+.seg button.active{background:#fff;color:#000;border-color:#fff}
+.seg small{display:block;font-weight:500;font-size:10px;opacity:.65;margin-top:2px}
+.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.preset{border:2px solid var(--line);background:var(--panel2);color:#eee;border-radius:8px;padding:7px 6px;font-weight:700;font-size:12px;min-height:56px}
+.preset .sw{display:block;height:17px;border-radius:4px;margin-bottom:6px}
+.preset.active{border-color:#fff}
+.colorrow{display:flex;gap:10px;align-items:center}
+input[type=color]{width:54px;height:42px;border:1px solid var(--line);border-radius:7px;background:var(--panel3);padding:4px}
+.exportbox{background:var(--panel2);border-radius:8px;padding:13px 14px}
+.exportbox dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12.5px}
+.exportbox dt{color:var(--muted)} .exportbox dd{margin:0;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.progresswrap{display:none;margin-top:14px}
+.progresswrap.show{display:block}
+.progressbar{height:8px;background:var(--panel3);border-radius:99px;overflow:hidden}
+.progressbar i{display:block;height:100%;width:0;background:#fff;transition:width .2s}
+.result{display:none;margin-top:14px}
+.result.show{display:block}
+.result video{width:100%;border-radius:8px;background:#000}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.7}
+.presets-sns{display:grid;gap:6px}
+.sns{width:100%;text-align:left;border:1px solid var(--line);background:var(--panel2);color:#eee;border-radius:8px;padding:11px 13px;font-weight:700;min-height:50px;font-size:13.5px}
+.sns small{display:block;font-weight:500;color:var(--muted);margin-top:2px;font-size:11.5px}
+.wide{width:100%;justify-content:center}
+footer{max-width:1020px;margin:0 auto;padding:10px 18px 26px;color:var(--muted2);font-size:11.5px;line-height:1.7;text-align:center}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;place-items:center;z-index:50;padding:16px}
+.modal.show{display:grid}
+.modalcard{background:var(--panel2);color:var(--ink);border-radius:12px;padding:24px;max-width:400px;width:100%;text-align:center;border:1px solid var(--line)}
+.modalcard .big{font-size:32px}
+.spinner{width:42px;height:42px;border-radius:50%;border:4px solid var(--panel3);border-top-color:#fff;margin:10px auto;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+@media (max-width:640px){
+  .brand small{display:none}
+  .top-actions .btn .lbl{display:none}
+  .top-actions .btn{padding:8px 10px}
+  .top-actions .btn.primary .lbl{display:inline}
+  canvas#preview{max-height:48vh}
+  .trimgrid{grid-template-columns:1fr}
+  .canvas-shell{min-height:240px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">✂</span><span class="proj">プロジェクト<small>動画編集</small></span></div>
+  <div class="top-actions">
+    <label class="btn" for="fileInput" title="動画を開く">＋<span class="lbl"> 開く</span></label>
+    <button class="btn" id="sampleBtn" type="button" title="サンプルで試す">▶<span class="lbl"> サンプル</span></button>
+    <button class="btn" id="snapshotBtn" type="button" disabled title="静止画を保存">▣<span class="lbl"> 静止画</span></button>
+    <button class="btn primary" id="exportTopBtn" type="button" disabled>⬆ エクスポート</button>
+  </div>
+</header>
+
+<div class="layout">
+  <section class="stage-card" aria-label="プレビュー">
+    <!-- Empty / import state -->
+    <div class="dropzone" id="dropzone">
+      <div class="import-card">
+        <div class="import-plus">＋</div>
+        <h1>メディアをインポート</h1>
+        <p>動画をドラッグ＆ドロップ、またはファイルを選ぶだけ。トリミング、フィルター、テキスト、縦動画への変換までこの画面で完結します。動画がサーバーに送られることはありません。</p>
+        <div class="drop-actions">
+          <label class="btn primary big" for="fileInput">動画を選ぶ</label>
+          <button class="btn ghostdark big" id="sampleBtn2" type="button">▶ サンプルで試す</button>
+        </div>
+      </div>
+      <div class="quick">
+        <span><b>✂</b>トリミング</span><span><b>✦</b>フィルター</span><span><b>T</b>テキスト</span>
+        <span><b>▦</b>9:16 / 1:1</span><span><b>⬆</b>高画質書き出し</span>
+      </div>
+    </div>
+
+    <!-- Editor -->
+    <div class="editor" id="editor" hidden>
+      <div class="canvas-shell"><canvas id="preview" width="1280" height="720"></canvas></div>
+      <video id="source" playsinline preload="auto" style="display:none"></video>
+
+      <div class="transport">
+        <div class="timecode"><b id="curTime">0:00</b> / <span id="durTime">0:00</span></div>
+        <div class="transport-row">
+          <button class="iconbtn" id="backBtn" type="button">⏪ 5秒</button>
+          <button class="playbtn" id="playBtn" type="button" aria-label="再生・一時停止">▶</button>
+          <button class="iconbtn" id="fwdBtn" type="button">5秒 ⏩</button>
+          <input class="seek" id="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="再生位置">
+          <button class="iconbtn" id="muteBtn" type="button">🔊 音量</button>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="tl-head">
+          <h3>タイムライン</h3>
+          <div class="tl-tools"><span title="元に戻す">↩</span><span title="やり直す">↪</span><span title="分割">✂</span><span title="追加">＋</span></div>
+        </div>
+        <div class="ruler" aria-hidden="true"><i style="left:0">00:00</i><i style="left:36%">00:02</i><i style="left:72%">00:04</i></div>
+        <div class="track-row">
+          <span class="track-ico">🎬</span>
+          <div class="clipbar" id="clipBar">
+            <span class="handle l">‹</span>
+            <span class="clipname" id="clipName">クリップ</span>
+            <div class="playhead" id="playhead"></div>
+            <span class="handle r">›</span>
+          </div>
+        </div>
+        <div class="track-row">
+          <span class="track-ico">🎵</span>
+          <div class="audiobar"><span>元の音声</span><div class="wave"></div></div>
+        </div>
+        <div class="trimgrid">
+          <div><label for="trimStart">開始（トリミング） <span id="trimStartVal">0.0秒</span></label><input id="trimStart" type="range" min="0" max="10" step="0.1" value="0"></div>
+          <div><label for="trimEnd">終了（トリミング） <span id="trimEndVal">0.0秒</span></label><input id="trimEnd" type="range" min="0" max="10" step="0.1" value="0"></div>
+        </div>
+        <div class="trimvals">
+          <span class="chip">📄 <span id="fileName">—</span></span>
+          <span class="chip">⏱ 書き出し長さ：<strong id="clipLen">—</strong></span>
+          <span class="chip">🎞 <span id="origRes">—</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel" aria-label="編集パネル">
+    <div class="panes-wrap">
+    <div class="pane active" id="pane-basic">
+      <h2>編集</h2>
+      <p class="lead">投稿先に合わせるだけでOK。迷ったら「SNSおすすめ」から選んでください。</p>
+      <div class="field">
+        <label>比率（アスペクト比）</label>
+        <div class="seg" id="aspectSeg">
+          <button type="button" data-aspect="original" class="active">元のまま<small>自動</small></button>
+          <button type="button" data-aspect="16:9">16:9<small>YouTube</small></button>
+          <button type="button" data-aspect="9:16">9:16<small>リール / TikTok</small></button>
+          <button type="button" data-aspect="1:1">1:1<small>投稿</small></button>
+        </div>
+      </div>
+      <div class="field">
+        <label>SNSおすすめプリセット</label>
+        <div class="presets-sns">
+          <button class="sns" type="button" data-sns="youtube">▶ YouTube用 <small>16:9 ・ 1080p ・ 標準速度</small></button>
+          <button class="sns" type="button" data-sns="vertical">📱 縦動画用（リール / TikTok / Shorts）<small>9:16 ・ 1080×1920</small></button>
+          <button class="sns" type="button" data-sns="square">⬛ 正方形投稿用 <small>1:1 ・ 1080×1080</small></button>
+        </div>
+      </div>
+      <div class="field"><label for="speed">速度 <output id="speedVal">1.0×</output></label>
+        <select id="speed"><option value="0.5">0.5× ゆっくり</option><option value="1" selected>1.0× 標準</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2.0× 早送り</option></select></div>
+      <div class="field"><label for="volume">音量 <output id="volVal">100%</output></label><input id="volume" type="range" min="0" max="1" step="0.05" value="1"></div>
+      <div class="field"><label>回転</label><button class="btn wide" id="rotateBtn" type="button">⟳ 90°回転する（現在 <span id="rotVal">0°</span>）</button></div>
+    </div>
+
+    <div class="pane" id="pane-color">
+      <h2>フィルター・調整</h2>
+      <p class="lead">プリセットを押すだけできれいに。もっとこだわりたい人は下のスライダーで微調整できます。</p>
+      <div class="field"><label>フィルター</label>
+        <div class="presets" id="presets">
+          <button class="preset active" type="button" data-preset="none"><span class="sw" style="background:#9aa0a8"></span>オリジナル</button>
+          <button class="preset" type="button" data-preset="vivid"><span class="sw" style="background:#ff4b2e"></span>あざやか</button>
+          <button class="preset" type="button" data-preset="warm"><span class="sw" style="background:#ff9a3c"></span>あたたかい</button>
+          <button class="preset" type="button" data-preset="cool"><span class="sw" style="background:#3aa7ff"></span>さわやか</button>
+          <button class="preset" type="button" data-preset="mono"><span class="sw" style="background:#333"></span>モノクロ</button>
+          <button class="preset" type="button" data-preset="vintage"><span class="sw" style="background:#c9a06a"></span>レトロ</button>
+        </div>
+      </div>
+      <div class="field"><label for="brightness">明るさ <output id="brightnessVal">100%</output></label><input id="brightness" type="range" min="50" max="160" value="100"></div>
+      <div class="field"><label for="contrast">コントラスト <output id="contrastVal">100%</output></label><input id="contrast" type="range" min="50" max="170" value="100"></div>
+      <div class="field"><label for="saturation">彩度 <output id="saturationVal">100%</output></label><input id="saturation" type="range" min="0" max="220" value="100"></div>
+      <div class="field"><button class="btn wide" id="resetColor" type="button">↩ 調整をリセット</button></div>
+    </div>
+
+    <div class="pane" id="pane-text">
+      <h2>テキスト</h2>
+      <p class="lead">タイトルやテロップを入れられます。プレビューにそのまま表示され、書き出しにも焼き込まれます。</p>
+      <div class="field"><label for="overlayText">文字</label><textarea id="overlayText" rows="2" placeholder="例：今日のハイライト ✨"></textarea></div>
+      <div class="field"><label for="textSize">大きさ <output id="textSizeVal">56</output></label><input id="textSize" type="range" min="24" max="110" value="56"></div>
+      <div class="field"><label>位置</label>
+        <div class="seg" id="posSeg" style="grid-template-columns:repeat(3,1fr)">
+          <button type="button" data-pos="top">上</button>
+          <button type="button" data-pos="center">中央</button>
+          <button type="button" data-pos="bottom" class="active">下</button>
+        </div></div>
+      <div class="field"><label>文字の色</label><div class="colorrow"><input type="color" id="textColor" value="#ffffff"><span class="hint">白＋影が一番読みやすいです。背景帯を付けるとさらに見やすくなります。</span></div></div>
+      <div class="field"><label for="textBand">背景帯</label><select id="textBand"><option value="shadow" selected>影のみ（おすすめ）</option><option value="band">半透明の帯あり</option><option value="none">なし</option></select></div>
+      <div class="field"><button class="btn wide" id="clearText" type="button">文字を消す</button></div>
+    </div>
+
+    <div class="pane" id="pane-export">
+      <h2>エクスポート</h2>
+      <p class="lead">高画質設定で WebM 形式に書き出します。SNSやYouTubeへのアップロードにそのまま使えます。</p>
+      <div class="field"><label for="quality">画質（解像度）</label>
+        <select id="quality"><option value="1080" selected>フルHD 1080p（おすすめ・高画質）</option><option value="720">HD 720p（軽め）</option><option value="480">480p（最速・小さい）</option></select></div>
+      <div class="exportbox"><dl>
+        <dt>形式</dt><dd>WebM（VP9 / 高ビットレート）</dd>
+        <dt>比率</dt><dd id="sumAspect">元のまま</dd>
+        <dt>長さ</dt><dd id="sumLen">—</dd>
+        <dt>速度</dt><dd id="sumSpeed">1.0×</dd>
+      </dl></div>
+      <div class="field" style="margin-top:16px"><button class="btn primary wide" id="exportBtn" type="button" style="min-height:50px;font-size:15px" disabled>⬆ 高画質でエクスポート</button></div>
+      <div class="progresswrap" id="progressWrap"><div class="progressbar"><i id="progressBar"></i></div><p class="hint" id="progressText" style="margin-top:8px">書き出し中…</p></div>
+      <div class="result" id="result">
+        <p style="font-weight:800;margin:0 0 8px">✅ 書き出し完了！</p>
+        <video id="resultVideo" controls playsinline></video>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <a class="btn primary" id="downloadLink" href="#" download="edited-video.webm">⬇ 動画をダウンロード</a>
+          <span class="chip" id="resultSize" style="align-self:center"></span>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:14px">※ 書き出しは実時間で録画しながら行います（例：30秒の動画なら約30秒かかります）。書き出し中はこのタブを開いたままにしてください。音声も一緒に書き出されます。</p>
+    </div>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="ツールバー">
+      <button class="tab active" data-tab="basic" type="button"><span class="tico">✂</span>編集</button>
+      <button class="tab" data-tab="color" type="button"><span class="tico">✦</span>調整</button>
+      <button class="tab" data-tab="text" type="button"><span class="tico">T</span>テキスト</button>
+      <button class="dockbtn" id="dockRotate" type="button"><span class="tico">⟳</span>回転</button>
+      <button class="dockbtn" id="dockSnap" type="button"><span class="tico">▣</span>静止画</button>
+      <button class="tab" data-tab="export" type="button"><span class="tico">⬆</span>書き出し</button>
+    </div>
+  </aside>
+</div>
+
+<footer>使い方：①動画を選ぶ → ②タイムラインと下のツールで調整 → ③「書き出し」からダウンロード。すべての処理はお使いのブラウザの中だけで行われ、動画が外部に送信されることはありません。</footer>
+
+<input type="file" id="fileInput" accept="video/*" hidden>
+
+<div class="modal" id="exportModal" role="dialog" aria-modal="true">
+  <div class="modalcard"><div class="big">🎞️</div><div class="spinner"></div><p style="font-weight:800" id="modalText">書き出し中です…</p><p class="hint">動画を再生しながら高画質で録画しています。<br>終わるまでタブを閉じないでください。</p></div>
+</div>
+
+<script>
+(function(){
+  var video=document.getElementById('source');
+  var canvas=document.getElementById('preview');
+  var ctx=canvas.getContext('2d');
+  var fileInput=document.getElementById('fileInput');
+  var dropzone=document.getElementById('dropzone');
+  var editor=document.getElementById('editor');
+  var state={loaded:false,aspect:'original',rotation:0,preset:'none',textPos:'bottom',exporting:false,audioCtx:null,audioDest:null,audioSrc:null,fileName:''};
+
+  function fmt(s){ if(!isFinite(s)) s=0; s=Math.max(0,Math.floor(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+  function $(id){return document.getElementById(id);}
+
+  // Tabs (bottom dock)
+  var tabs=document.querySelectorAll('.tab');
+  tabs.forEach(function(t){ t.addEventListener('click',function(){
+    tabs.forEach(function(x){x.classList.remove('active')}); t.classList.add('active');
+    document.querySelectorAll('.pane').forEach(function(p){p.classList.remove('active')});
+    $('pane-'+t.dataset.tab).classList.add('active');
+  });});
+  function goTab(name){ document.querySelector('.tab[data-tab="'+name+'"]').click(); }
+  $('dockRotate').addEventListener('click',function(){ $('rotateBtn').click(); });
+  $('dockSnap').addEventListener('click',function(){ if(!$('snapshotBtn').disabled) $('snapshotBtn').click(); });
+
+  // Canvas sizing by aspect + quality
+  function targetSize(){
+    var q=parseInt($('quality').value,10);
+    var vw=video.videoWidth||1280, vh=video.videoHeight||720;
+    if(state.rotation%180!==0){ var tmp=vw; vw=vh; vh=tmp; }
+    var ratio;
+    if(state.aspect==='16:9') ratio=16/9; else if(state.aspect==='9:16') ratio=9/16; else if(state.aspect==='1:1') ratio=1; else ratio=vw/vh;
+    var w,h;
+    if(ratio>=1){ h=q; w=Math.round(q*ratio); } else { w=q; h=Math.round(q/ratio); }
+    if(w>1920){ h=Math.round(h*1920/w); w=1920; }
+    w=w%2?w-1:w; h=h%2?h-1:h;
+    return {w:Math.max(2,w),h:Math.max(2,h)};
+  }
+  function applyCanvasSize(){
+    if(!state.loaded) return;
+    var s=targetSize(); canvas.width=s.w; canvas.height=s.h;
+    $('sumAspect').textContent=(state.aspect==='original'?'元のまま':state.aspect)+' ・ '+s.w+'×'+s.h;
+  }
+
+  function filterStr(){
+    var b=$('brightness').value, c=$('contrast').value, s=$('saturation').value;
+    var extra='';
+    if(state.preset==='mono') extra=' grayscale(1)';
+    if(state.preset==='vintage') extra=' sepia(0.45)';
+    if(state.preset==='warm') extra=' sepia(0.22) saturate(1.1)';
+    if(state.preset==='cool') extra=' hue-rotate(-8deg) saturate(1.05)';
+    return 'brightness('+b+'%) contrast('+c+'%) saturate('+s+'%)'+extra;
+  }
+
+  function draw(){
+    requestAnimationFrame(draw);
+    if(!state.loaded || video.readyState<2) return;
+    var W=canvas.width,H=canvas.height;
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    var vw=video.videoWidth, vh=video.videoHeight; if(!vw) return;
+    var rot=state.rotation*Math.PI/180;
+    var swapped=(state.rotation%180!==0);
+    var ew=swapped?vh:vw, eh=swapped?vw:vh;
+    var scale=Math.max(W/ew,H/eh);
+    if(state.aspect==='original') scale=Math.min(W/ew,H/eh);
+    var dw=vw*scale, dh=vh*scale;
+    ctx.save();
+    ctx.translate(W/2,H/2); ctx.rotate(rot);
+    try{ ctx.filter=filterStr(); }catch(e){}
+    ctx.drawImage(video,-dw/2,-dh/2,dw,dh);
+    try{ ctx.filter='none'; }catch(e){}
+    ctx.restore();
+    drawText(W,H);
+    if(!state.exporting){
+      $('curTime').textContent=fmt(video.currentTime);
+      var dur=video.duration||0;
+      $('seek').value=dur?(video.currentTime/dur*100):0;
+      var ph=$('playhead'); if(ph&&dur) ph.style.left='calc('+(video.currentTime/dur*100)+'% )';
+      if(!video.paused && video.currentTime>=parseFloat($('trimEnd').value)){ video.pause(); $('playBtn').textContent='▶'; }
+    }
+  }
+  requestAnimationFrame(draw);
+
+  function drawText(W,H){
+    var txt=$('overlayText').value.trim(); if(!txt) return;
+    var size=parseInt($('textSize').value,10);
+    var scaled=size*(H/720); if(scaled<14) scaled=14;
+    ctx.save();
+    ctx.font='900 '+scaled+'px "Noto Sans JP", sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    var lines=txt.split('\n'); var lh=scaled*1.25;
+    var y;
+    if(state.textPos==='top') y=scaled*0.9;
+    else if(state.textPos==='center') y=H/2-((lines.length-1)*lh)/2;
+    else y=H-scaled*0.9-((lines.length-1)*lh)/2;
+    var band=$('textBand').value;
+    if(band==='band'){
+      var maxw=0; lines.forEach(function(l){ maxw=Math.max(maxw,ctx.measureText(l).width); });
+      ctx.fillStyle='rgba(0,0,0,0.55)';
+      var bh=lines.length*lh+scaled*0.5;
+      roundRect(W/2-maxw/2-scaled*0.5, y-lh/2-scaled*0.25, maxw+scaled, bh, scaled*0.25); ctx.fill();
+    }
+    lines.forEach(function(l,i){
+      if(band!=='none'){ ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=scaled*0.18; ctx.shadowOffsetY=2; }
+      ctx.fillStyle=$('textColor').value;
+      ctx.fillText(l,W/2,y+i*lh,W*0.92);
+    });
+    ctx.restore();
+  }
+  function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  // Loading
+  function loadFile(file){
+    if(!file) return;
+    var url=URL.createObjectURL(file);
+    state.fileName=file.name||'動画';
+    video.src=url; video.load();
+  }
+  fileInput.addEventListener('change',function(){ loadFile(fileInput.files[0]); });
+  ['dragover','dragenter'].forEach(function(ev){ dropzone.addEventListener(ev,function(e){e.preventDefault();dropzone.classList.add('drag');}); });
+  ['dragleave','drop'].forEach(function(ev){ dropzone.addEventListener(ev,function(e){e.preventDefault();dropzone.classList.remove('drag');}); });
+  dropzone.addEventListener('drop',function(e){ var f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) loadFile(f); });
+  document.addEventListener('dragover',function(e){e.preventDefault();});
+  document.addEventListener('drop',function(e){e.preventDefault();});
+
+  video.addEventListener('loadedmetadata',function(){
+    state.loaded=true;
+    dropzone.hidden=true; editor.hidden=false;
+    var d=video.duration||0;
+    $('durTime').textContent=fmt(d);
+    $('fileName').textContent=state.fileName;
+    $('clipName').textContent=state.fileName;
+    $('origRes').textContent=video.videoWidth+'×'+video.videoHeight;
+    ['trimStart','trimEnd'].forEach(function(id){ var el=$(id); el.max=d; el.step=0.1; });
+    $('trimStart').value=0; $('trimEnd').value=d;
+    updateTrimLabels();
+    applyCanvasSize();
+    $('exportBtn').disabled=false; $('exportTopBtn').disabled=false; $('snapshotBtn').disabled=false;
+    video.currentTime=0;
+  });
+
+  function updateTrimLabels(){
+    var s=parseFloat($('trimStart').value)||0, e=parseFloat($('trimEnd').value)||0;
+    $('trimStartVal').textContent=s.toFixed(1)+'秒'; $('trimEndVal').textContent=e.toFixed(1)+'秒';
+    var len=Math.max(0,e-s); $('clipLen').textContent=len.toFixed(1)+'秒'; $('sumLen').textContent=len.toFixed(1)+'秒';
+  }
+  $('trimStart').addEventListener('input',function(){ var e=parseFloat($('trimEnd').value); if(parseFloat(this.value)>e-0.2) this.value=Math.max(0,e-0.2); video.currentTime=parseFloat(this.value); updateTrimLabels(); });
+  $('trimEnd').addEventListener('input',function(){ var s=parseFloat($('trimStart').value); if(parseFloat(this.value)<s+0.2) this.value=s+0.2; video.currentTime=Math.max(s,parseFloat(this.value)-0.05); updateTrimLabels(); });
+
+  // Transport
+  $('playBtn').addEventListener('click',function(){
+    if(video.paused){ if(video.currentTime>=parseFloat($('trimEnd').value)-0.05) video.currentTime=parseFloat($('trimStart').value); video.play(); this.textContent='⏸'; }
+    else { video.pause(); this.textContent='▶'; }
+  });
+  video.addEventListener('play',function(){ $('playBtn').textContent='⏸'; });
+  video.addEventListener('pause',function(){ $('playBtn').textContent='▶'; });
+  $('seek').addEventListener('input',function(){ var d=video.duration||0; video.currentTime=d*this.value/100; });
+  $('backBtn').addEventListener('click',function(){ video.currentTime=Math.max(0,video.currentTime-5); });
+  $('fwdBtn').addEventListener('click',function(){ video.currentTime=Math.min(video.duration||0,video.currentTime+5); });
+  $('muteBtn').addEventListener('click',function(){ video.muted=!video.muted; this.textContent=video.muted?'🔇 ミュート中':'🔊 音量'; });
+  canvas.addEventListener('click',function(){ $('playBtn').click(); });
+
+  // Basic pane
+  document.querySelectorAll('#aspectSeg button').forEach(function(b){ b.addEventListener('click',function(){
+    document.querySelectorAll('#aspectSeg button').forEach(function(x){x.classList.remove('active')}); b.classList.add('active');
+    state.aspect=b.dataset.aspect; applyCanvasSize();
+  });});
+  document.querySelectorAll('[data-sns]').forEach(function(b){ b.addEventListener('click',function(){
+    var map={youtube:'16:9',vertical:'9:16',square:'1:1'};
+    document.querySelector('#aspectSeg button[data-aspect="'+map[b.dataset.sns]+'"]').click();
+    $('quality').value='1080';
+    applyCanvasSize();
+  });});
+  $('speed').addEventListener('change',function(){ video.playbackRate=parseFloat(this.value); $('speedVal').textContent=parseFloat(this.value).toFixed(2).replace(/0+$/,'').replace(/\.$/,'.0')+'×'; $('sumSpeed').textContent=this.value+'×'; });
+  $('volume').addEventListener('input',function(){ video.volume=parseFloat(this.value); $('volVal').textContent=Math.round(this.value*100)+'%'; });
+  $('rotateBtn').addEventListener('click',function(){ state.rotation=(state.rotation+90)%360; $('rotVal').textContent=state.rotation+'°'; applyCanvasSize(); });
+
+  // Color pane
+  var presetValues={none:[100,100,100],vivid:[105,108,145],warm:[108,102,118],cool:[102,104,112],mono:[102,106,0],vintage:[106,96,72]};
+  document.querySelectorAll('#presets .preset').forEach(function(b){ b.addEventListener('click',function(){
+    document.querySelectorAll('#presets .preset').forEach(function(x){x.classList.remove('active')}); b.classList.add('active');
+    state.preset=b.dataset.preset; var v=presetValues[state.preset];
+    setSlider('brightness',v[0]); setSlider('contrast',v[1]); setSlider('saturation',v[2]);
+  });});
+  function setSlider(id,val){ var el=$(id); el.value=val; $(id+'Val').textContent=val+'%'; }
+  ['brightness','contrast','saturation'].forEach(function(id){ $(id).addEventListener('input',function(){ $(id+'Val').textContent=this.value+'%'; }); });
+  $('resetColor').addEventListener('click',function(){ document.querySelector('#presets .preset[data-preset="none"]').click(); });
+  $('textSize').addEventListener('input',function(){ $('textSizeVal').textContent=this.value; });
+  document.querySelectorAll('#posSeg button').forEach(function(b){ b.addEventListener('click',function(){
+    document.querySelectorAll('#posSeg button').forEach(function(x){x.classList.remove('active')}); b.classList.add('active'); state.textPos=b.dataset.pos;
+  });});
+  $('clearText').addEventListener('click',function(){ $('overlayText').value=''; });
+  $('quality').addEventListener('change',applyCanvasSize);
+
+  // Snapshot
+  $('snapshotBtn').addEventListener('click',function(){
+    if(!state.loaded) return;
+    var a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='frame.png'; a.click();
+  });
+
+  // Sample video
+  function makeSample(){
+    var c=document.createElement('canvas'); c.width=1280; c.height=720; var g=c.getContext('2d');
+    var stream=c.captureStream(30);
+    var mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
+    var rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8000000});
+    var chunks=[]; rec.ondataavailable=function(e){ if(e.data.size) chunks.push(e.data); };
+    rec.onstop=function(){
+      var blob=new Blob(chunks,{type:'video/webm'});
+      var f=new File([blob],'sample-demo.webm',{type:'video/webm'});
+      loadFile(f);
+    };
+    var start=performance.now(); rec.start();
+    (function anim(){
+      var t=(performance.now()-start)/1000;
+      var grad=g.createLinearGradient(0,0,1280,720); grad.addColorStop(0,'#ff7a3c'); grad.addColorStop(0.55,'#e83e6b'); grad.addColorStop(1,'#28398f');
+      g.fillStyle=grad; g.fillRect(0,0,1280,720);
+      g.fillStyle='rgba(255,255,255,0.9)';
+      for(var i=0;i<5;i++){ var x=(i*280 + t*90)%1450-80, y=140+Math.sin(t*1.4+i)*60; g.beginPath(); g.arc(x,y,34+((i%3)*12),0,Math.PI*2); g.fill(); }
+      g.fillStyle='#fff'; g.font='900 84px sans-serif'; g.textAlign='center';
+      g.fillText('サンプル動画',640,350);
+      g.font='700 38px sans-serif'; g.fillText('このまま編集を試せます ✨',640,420);
+      g.fillStyle='rgba(0,0,0,0.35)'; g.fillRect(0,720-16,1280,16);
+      g.fillStyle='#fff'; g.fillRect(0,720-16,1280*Math.min(1,t/6),16);
+      if(t<6) requestAnimationFrame(anim); else rec.stop();
+    })();
+  }
+  $('sampleBtn').addEventListener('click',makeSample);
+  $('sampleBtn2').addEventListener('click',makeSample);
+
+  // Export
+  function ensureAudio(){
+    if(state.audioCtx) return true;
+    try{
+      var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false;
+      state.audioCtx=new AC();
+      state.audioSrc=state.audioCtx.createMediaElementSource(video);
+      state.audioDest=state.audioCtx.createMediaStreamDestination();
+      state.audioSrc.connect(state.audioCtx.destination);
+      state.audioSrc.connect(state.audioDest);
+      return true;
+    }catch(e){ return false; }
+  }
+  function doExport(){
+    if(!state.loaded || state.exporting) return;
+    goTab('export');
+    ensureAudio(); if(state.audioCtx && state.audioCtx.state==='suspended') state.audioCtx.resume();
+    applyCanvasSize();
+    var startT=parseFloat($('trimStart').value)||0, endT=parseFloat($('trimEnd').value)||video.duration;
+    var speed=parseFloat($('speed').value)||1;
+    var stream=canvas.captureStream(30);
+    if(state.audioDest){ state.audioDest.stream.getAudioTracks().forEach(function(tr){ try{stream.addTrack(tr);}catch(e){} }); }
+    var mime='';
+    ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].forEach(function(m){ if(!mime && window.MediaRecorder && MediaRecorder.isTypeSupported(m)) mime=m; });
+    if(!mime){ $('progressText').textContent='このブラウザは書き出し（MediaRecorder）に対応していません。Chrome / Edge / Safari の最新版でお試しください。'; $('progressWrap').classList.add('show'); return; }
+    var rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:14000000,audioBitsPerSecond:192000});
+    var chunks=[]; rec.ondataavailable=function(e){ if(e.data.size) chunks.push(e.data); };
+    state.exporting=true;
+    $('exportModal').classList.add('show'); $('progressWrap').classList.add('show'); $('result').classList.remove('show');
+    $('exportBtn').disabled=true;
+    rec.onstop=function(){
+      state.exporting=false; video.pause();
+      $('exportModal').classList.remove('show'); $('exportBtn').disabled=false;
+      $('progressBar').style.width='100%'; $('progressText').textContent='完了しました！';
+      var blob=new Blob(chunks,{type:'video/webm'});
+      var url=URL.createObjectURL(blob);
+      $('resultVideo').src=url;
+      var dl=$('downloadLink'); dl.href=url; dl.download=(state.fileName.replace(/\.[^.]+$/,'')||'video')+'-edited.webm';
+      $('resultSize').textContent=(blob.size/1024/1024).toFixed(1)+' MB ・ WebM';
+      $('result').classList.add('show');
+    };
+    video.pause(); video.currentTime=startT; video.playbackRate=speed;
+    video.onseeked=function(){
+      video.onseeked=null;
+      rec.start(250); video.play();
+      var iv=setInterval(function(){
+        var p=(video.currentTime-startT)/Math.max(0.1,(endT-startT)); p=Math.max(0,Math.min(1,p));
+        $('progressBar').style.width=Math.round(p*100)+'%';
+        $('progressText').textContent='書き出し中… '+Math.round(p*100)+'%（'+fmt(video.currentTime-startT)+' / '+fmt(endT-startT)+'）';
+        $('modalText').textContent='書き出し中… '+Math.round(p*100)+'%';
+        if(video.currentTime>=endT || video.ended){ clearInterval(iv); if(rec.state!=='inactive') rec.stop(); }
+      },200);
+    };
+  }
+  $('exportBtn').addEventListener('click',doExport);
+  $('exportTopBtn').addEventListener('click',doExport);
+})();
+</script>
+</body>
+</html>
